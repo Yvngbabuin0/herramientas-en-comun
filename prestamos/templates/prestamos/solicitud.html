@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Mi solicitud | Herramientas en Común{% endblock %}
+
+{% block contenido %}
+    <h1>Mi solicitud</h1>
+    {% if herramientas %}
+        <table>
+            <thead>
+                <tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+                {% for herramienta in herramientas %}
+                    <tr>
+                        <td>{{ herramienta.codigo }}</td>
+                        <td>{{ herramienta.nombre }}</td>
+                        <td>{{ herramienta.categoria }}</td>
+                        <td>
+                            <form method="post" action="{% url 'prestamos:quitar_solicitud' herramienta.id %}">
+                                {% csrf_token %}
+                                <button type="submit">Quitar</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p>La devolución esperada es a 7 días desde hoy.</p>
+        <form method="post" action="{% url 'prestamos:confirmar_solicitud' %}">
+            {% csrf_token %}
+            <button type="submit">Confirmar solicitud</button>
+        </form>
+    {% else %}
+        <p>Tu solicitud está vacía.</p>
+    {% endif %}
+    <p><a href="{% url 'prestamos:catalogo' %}">Volver al catálogo</a></p>
+{% endblock %}

@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from django.utils import timezone
 from django.views import View
 
 from .mixins import SoloEncargadoMixin
@@ -162,3 +165,99 @@ class CrudTests(TestCase):
         respuesta = self.client.post(self.url('herramienta_delete', 1), follow=True)
         self.assertContains(respuesta, 'tiene préstamos registrados')
         self.assertTrue(Herramienta.objects.filter(pk=1).exists())
+
+
+class SolicitudTests(TestCase):
+    fixtures = ['datos_iniciales']
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.socio = User.objects.create_user('socio_prueba')
+        cls.otro = User.objects.create_user('otro_prueba')
+
+    def setUp(self):
+        self.client.force_login(self.socio)
+
+    def post(self, nombre, *args):
+        return self.client.post(reverse(f'prestamos:{nombre}', args=args), follow=True)
+
+    def solicitud(self):
+        return self.client.session.get('solicitud', [])
+
+    def test_catalogo_solo_prestables(self):
+        Herramienta.objects.filter(pk=1).update(disponible=False)
+        # En reparación pero marcada disponible: tampoco debe aparecer.
+        Herramienta.objects.filter(pk=7).update(disponible=True)
+        respuesta = self.client.get(reverse('prestamos:catalogo'))
+        ids = {h.pk for h in respuesta.context['herramientas']}
+        self.assertEqual(ids, set(range(1, 16)) - {1, 7, 15})
+        self.assertContains(respuesta, 'Agregar a solicitud', count=12)
+
+    def test_solo_post_y_con_sesion(self):
+        rutas = [reverse('prestamos:agregar_solicitud', args=[1]),
+                 reverse('prestamos:quitar_solicitud', args=[1]),
+                 reverse('prestamos:confirmar_solicitud')]
+        for ruta in rutas:
+            self.assertEqual(self.client.get(ruta).status_code, 405, ruta)
+        self.client.logout()
+        for ruta in rutas:
+            self.assertEqual(self.client.post(ruta).status_code, 302, ruta)
+        for nombre in ('catalogo', 'ver_solicitud', 'mis_prestamos'):
+            self.assertEqual(self.client.get(reverse(f'prestamos:{nombre}')).status_code, 302)
+        self.assertFalse(Prestamo.objects.exists())
+
+    def test_agregar_sin_repetir_y_maximo_tres(self):
+        self.post('agregar_solicitud', 1)
+        self.assertContains(self.post('agregar_solicitud', 1), 'ya está en tu solicitud')
+        self.post('agregar_solicitud', 2)
+        self.assertContains(self.post('agregar_solicitud', 3), 'Mi solicitud (3)')
+        self.assertContains(self.post('agregar_solicitud', 4), 'más de 3 herramientas')
+        self.assertEqual(self.solicitud(), [1, 2, 3])
+
+    def test_agregar_no_disponible_o_inexistente(self):
+        self.assertContains(self.post('agregar_solicitud', 7), 'no está disponible')
+        self.assertEqual(self.post('agregar_solicitud', 999).status_code, 404)
+        self.assertEqual(self.solicitud(), [])
+
+    def test_ver_y_quitar(self):
+        self.post('agregar_solicitud', 1)
+        self.post('agregar_solicitud', 2)
+        respuesta = self.client.get(reverse('prestamos:ver_solicitud'))
+        self.assertEqual([h.pk for h in respuesta.context['herramientas']], [1, 2])
+        self.assertContains(self.post('quitar_solicitud', 1), 'Mi solicitud (1)')
+        self.assertEqual(self.solicitud(), [2])
+        Herramienta.objects.filter(pk=2).delete()
+        self.assertContains(
+            self.client.get(reverse('prestamos:ver_solicitud')), 'Mi solicitud (0)')
+        self.assertEqual(self.solicitud(), [])
+
+    def test_confirmar(self):
+        self.post('agregar_solicitud', 1)
+        self.post('agregar_solicitud', 2)
+        respuesta = self.post('confirmar_solicitud')
+        self.assertRedirects(respuesta, reverse('prestamos:mis_prestamos'))
+        self.assertContains(respuesta, 'Solicitud enviada')
+        self.assertContains(respuesta, 'Mi solicitud (0)')
+        self.assertNotIn('solicitud', self.client.session)
+        hoy = timezone.localdate()
+        self.assertEqual(Prestamo.objects.filter(
+            socio=self.socio, estado='pendiente', fecha_solicitud=hoy,
+            fecha_devolucion_esperada=hoy + timedelta(days=7)).count(), 2)
+        self.assertFalse(Herramienta.objects.filter(pk__in=[1, 2], disponible=True).exists())
+
+    def test_confirmar_verifica_de_nuevo(self):
+        for pk in (1, 2, 3):
+            self.post('agregar_solicitud', pk)
+        Herramienta.objects.filter(pk=1).update(disponible=False)
+        Herramienta.objects.filter(pk=2).update(estado='en_reparacion')
+        respuesta = self.post('confirmar_solicitud')
+        self.assertContains(respuesta, 'Ya no estaban disponibles')
+        self.assertEqual(list(Prestamo.objects.values_list('herramienta_id', flat=True)), [3])
+        self.assertNotIn('solicitud', self.client.session)
+
+    def test_confirmar_vacia_y_prestamos_propios(self):
+        self.assertContains(self.post('confirmar_solicitud'), 'solicitud está vacía')
+        Prestamo.objects.create(
+            socio=self.otro, herramienta_id=1, fecha_devolucion_esperada=timezone.localdate())
+        respuesta = self.client.get(reverse('prestamos:mis_prestamos'))
+        self.assertEqual(list(respuesta.context['prestamos']), [])

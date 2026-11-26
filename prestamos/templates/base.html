@@ -10,6 +10,9 @@
         <nav>
             {% if user.is_authenticated %}
                 <a href="{% url 'prestamos:inicio' %}">Inicio</a>
+                <a href="{% url 'prestamos:catalogo' %}">Catálogo</a>
+                <a href="{% url 'prestamos:ver_solicitud' %}">Mi solicitud ({{ request.session.solicitud|length }})</a>
+                <a href="{% url 'prestamos:mis_prestamos' %}">Mis préstamos</a>
                 {% if user.is_staff %}
                     <a href="{% url 'prestamos:herramienta_list' %}">Herramientas</a>
                     <a href="{% url 'prestamos:categoria_list' %}">Categorías</a>

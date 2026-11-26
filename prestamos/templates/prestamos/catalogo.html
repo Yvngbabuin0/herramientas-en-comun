@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Catálogo | Herramientas en Común{% endblock %}
+
+{% block contenido %}
+    <h1>Catálogo de herramientas</h1>
+    <table>
+        <thead>
+            <tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Estado</th><th>Solicitud</th></tr>
+        </thead>
+        <tbody>
+            {% for herramienta in herramientas %}
+                <tr>
+                    <td>{{ herramienta.codigo }}</td>
+                    <td>{{ herramienta.nombre }}</td>
+                    <td>{{ herramienta.categoria }}</td>
+                    <td>{{ herramienta.get_estado_display }}</td>
+                    <td>
+                        <form method="post" action="{% url 'prestamos:agregar_solicitud' herramienta.id %}">
+                            {% csrf_token %}
+                            <button type="submit">Agregar a solicitud</button>
+                        </form>
+                        {% if herramienta.id in solicitud %}<small>Ya está en tu solicitud</small>{% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">No hay herramientas disponibles.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
