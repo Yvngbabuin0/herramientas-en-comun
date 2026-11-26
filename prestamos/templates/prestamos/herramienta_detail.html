@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{{ herramienta.nombre }} | Herramientas en Común{% endblock %}
+
+{% block contenido %}
+    <h1>{{ herramienta.nombre }}</h1>
+    <dl>
+        <dt>Código</dt><dd>{{ herramienta.codigo }}</dd>
+        <dt>Nombre</dt><dd>{{ herramienta.nombre }}</dd>
+        <dt>Categoría</dt><dd>{{ herramienta.categoria }}</dd>
+        <dt>Estado</dt><dd>{{ herramienta.get_estado_display }}</dd>
+        <dt>Disponible</dt><dd>{{ herramienta.disponible|yesno:"Sí,No" }}</dd>
+        <dt>Fecha de ingreso</dt><dd>{{ herramienta.fecha_ingreso|date:"d/m/Y" }}</dd>
+    </dl>
+    <p>
+        <a href="{% url 'prestamos:herramienta_update' herramienta.pk %}">Editar</a>
+        <a href="{% url 'prestamos:herramienta_delete' herramienta.pk %}">Eliminar</a>
+        <a href="{% url 'prestamos:herramienta_list' %}">Volver al listado</a>
+    </p>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Categorías | Herramientas en Común{% endblock %}
+
+{% block contenido %}
+    <h1>Categorías</h1>
+    <p><a href="{% url 'prestamos:categoria_create' %}">Nueva categoría</a></p>
+    <table>
+        <thead>
+            <tr><th>Nombre</th><th>Descripción</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+            {% for categoria in categoria_list %}
+                <tr>
+                    <td>{{ categoria.nombre }}</td>
+                    <td>{{ categoria.descripcion }}</td>
+                    <td>
+                        <a href="{% url 'prestamos:categoria_update' categoria.pk %}">Editar</a>
+                        <a href="{% url 'prestamos:categoria_delete' categoria.pk %}">Eliminar</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3">No hay categorías.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

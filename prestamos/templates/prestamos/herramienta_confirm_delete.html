@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Eliminar herramienta | Herramientas en Común{% endblock %}
+
+{% block contenido %}
+    <h1>Eliminar herramienta</h1>
+    <p>¿Seguro que quieres eliminar <strong>{{ herramienta }}</strong>?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Sí, eliminar</button>
+        <a href="{% url 'prestamos:herramienta_list' %}">Cancelar</a>
+    </form>
+{% endblock %}
