@@ -128,6 +128,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
+# Autenticación y sesiones
+LOGIN_URL = 'prestamos:login'
+LOGIN_REDIRECT_URL = 'prestamos:inicio'
+LOGOUT_REDIRECT_URL = 'prestamos:login'
+SESSION_COOKIE_AGE = 30 * 60  # 30 minutos, en segundos
+
+
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
