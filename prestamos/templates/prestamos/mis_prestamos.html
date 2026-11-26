@@ -4,9 +4,9 @@
 
 {% block contenido %}
     <h1>Mis préstamos</h1>
-    <table>
+    <div class="tabla"><table>
         <thead>
-            <tr><th>Herramienta</th><th>Solicitado</th><th>Devolución esperada</th><th>Devolución real</th><th>Estado</th></tr>
+            <tr><th>Herramienta</th><th>Solicitado</th><th>Devolución esperada</th><th>Devolución real</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
         <tbody>
             {% for prestamo in prestamos %}
@@ -16,10 +16,19 @@
                     <td>{{ prestamo.fecha_devolucion_esperada|date:"d/m/Y" }}</td>
                     <td>{{ prestamo.fecha_devolucion_real|date:"d/m/Y"|default:"—" }}</td>
                     <td>{{ prestamo.get_estado_display }}</td>
+                    <td>
+                        <a href="{% url 'prestamos:prestamo_detail' prestamo.pk %}">Ver</a>
+                        {% if prestamo.estado == 'pendiente' %}
+                            <form method="post" action="{% url 'prestamos:cancelar_prestamo' prestamo.pk %}" style="display: inline">
+                                {% csrf_token %}
+                                <button type="submit">Cancelar</button>
+                            </form>
+                        {% endif %}
+                    </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="5">Todavía no tienes préstamos.</td></tr>
+                <tr><td colspan="6">Todavía no tienes préstamos.</td></tr>
             {% endfor %}
         </tbody>
-    </table>
+    </table></div>
 {% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Todos los préstamos | Herramientas en Común{% endblock %}
+
+{% block contenido %}
+    <h1>Todos los préstamos</h1>
+    <div class="tabla"><table>
+        <thead>
+            <tr><th>Socio</th><th>Herramienta</th><th>Solicitado</th><th>Devolución esperada</th><th>Devolución real</th><th>Estado</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+            {% for prestamo in prestamo_list %}
+                <tr>
+                    <td>{{ prestamo.socio.get_full_name|default:prestamo.socio.username }}</td>
+                    <td>{{ prestamo.herramienta }}</td>
+                    <td>{{ prestamo.fecha_solicitud|date:"d/m/Y" }}</td>
+                    <td>{{ prestamo.fecha_devolucion_esperada|date:"d/m/Y" }}</td>
+                    <td>{{ prestamo.fecha_devolucion_real|date:"d/m/Y"|default:"—" }}</td>
+                    <td>{{ prestamo.get_estado_display }}</td>
+                    <td>
+                        {% if prestamo.estado == 'pendiente' %}
+                            <form method="post" action="{% url 'prestamos:activar_prestamo' prestamo.pk %}">
+                                {% csrf_token %}
+                                <button type="submit">Activar</button>
+                            </form>
+                        {% elif prestamo.estado == 'activo' %}
+                            <form method="post" action="{% url 'prestamos:devolver_prestamo' prestamo.pk %}">
+                                {% csrf_token %}
+                                <button type="submit">Registrar devolución</button>
+                            </form>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7">No hay préstamos registrados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+{% endblock %}

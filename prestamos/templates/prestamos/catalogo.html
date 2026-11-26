@@ -4,7 +4,7 @@
 
 {% block contenido %}
     <h1>Catálogo de herramientas</h1>
-    <table>
+    <div class="tabla"><table>
         <thead>
             <tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Estado</th><th>Solicitud</th></tr>
         </thead>
@@ -27,5 +27,5 @@
                 <tr><td colspan="5">No hay herramientas disponibles.</td></tr>
             {% endfor %}
         </tbody>
-    </table>
+    </table></div>
 {% endblock %}

@@ -3,6 +3,27 @@
 {% block titulo %}Inicio | Herramientas en Común{% endblock %}
 
 {% block contenido %}
-    <h1>Herramientas en Común</h1>
+    <h1>Bienvenido a Herramientas en Común</h1>
     <p>Inventario y préstamos de herramientas de la Junta de Vecinos Villa Los Aromos.</p>
+
+    <div class="opciones">
+        <div>
+            <h2><a href="{% url 'prestamos:catalogo' %}">Pedir herramientas</a></h2>
+            <p>Revisa las disponibles y agrega hasta 3 a tu solicitud.</p>
+        </div>
+        <div>
+            <h2><a href="{% url 'prestamos:mis_prestamos' %}">Revisar mis préstamos</a></h2>
+            <p>Consulta fechas y estados, o cancela los pendientes.</p>
+        </div>
+        {% if user.is_staff %}
+            <div>
+                <h2><a href="{% url 'prestamos:herramienta_list' %}">Administrar inventario</a></h2>
+                <p>Agrega, edita y elimina herramientas.</p>
+            </div>
+            <div>
+                <h2><a href="{% url 'prestamos:prestamo_list' %}">Gestionar préstamos</a></h2>
+                <p>Activa solicitudes y registra devoluciones.</p>
+            </div>
+        {% endif %}
+    </div>
 {% endblock %}

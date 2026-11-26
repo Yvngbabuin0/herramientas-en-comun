@@ -5,7 +5,7 @@
 {% block contenido %}
     <h1>Mi solicitud</h1>
     {% if herramientas %}
-        <table>
+        <div class="tabla"><table>
             <thead>
                 <tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Acciones</th></tr>
             </thead>
@@ -24,7 +24,7 @@
                     </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
         <p>La devolución esperada es a 7 días desde hoy.</p>
         <form method="post" action="{% url 'prestamos:confirmar_solicitud' %}">
             {% csrf_token %}

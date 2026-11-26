@@ -21,6 +21,10 @@ class HerramientaForm(forms.ModelForm):
             'fecha_ingreso': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['categoria'].empty_label = 'Selecciona una categoría'
+
     def clean_codigo(self):
         codigo = self.cleaned_data['codigo']
         if not re.fullmatch(r'HER-[0-9]{3}', codigo):

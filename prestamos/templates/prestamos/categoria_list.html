@@ -5,7 +5,7 @@
 {% block contenido %}
     <h1>Categorías</h1>
     <p><a href="{% url 'prestamos:categoria_create' %}">Nueva categoría</a></p>
-    <table>
+    <div class="tabla"><table>
         <thead>
             <tr><th>Nombre</th><th>Descripción</th><th>Acciones</th></tr>
         </thead>
@@ -23,5 +23,5 @@
                 <tr><td colspan="3">No hay categorías.</td></tr>
             {% endfor %}
         </tbody>
-    </table>
+    </table></div>
 {% endblock %}

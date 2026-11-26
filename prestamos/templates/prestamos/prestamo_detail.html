@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Detalle del préstamo | Herramientas en Común{% endblock %}
+
+{% block contenido %}
+    <h1>Detalle del préstamo</h1>
+    <dl>
+        <dt>Herramienta</dt><dd>{{ prestamo.herramienta }}</dd>
+        <dt>Fecha de solicitud</dt><dd>{{ prestamo.fecha_solicitud|date:"d/m/Y" }}</dd>
+        <dt>Devolución esperada</dt><dd>{{ prestamo.fecha_devolucion_esperada|date:"d/m/Y" }}</dd>
+        <dt>Devolución real</dt><dd>{{ prestamo.fecha_devolucion_real|date:"d/m/Y"|default:"—" }}</dd>
+        <dt>Estado</dt><dd>{{ prestamo.get_estado_display }}</dd>
+    </dl>
+    <p><a href="{% url 'prestamos:mis_prestamos' %}">Volver a Mis préstamos</a></p>
+{% endblock %}

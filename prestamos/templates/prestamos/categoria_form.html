@@ -4,7 +4,7 @@
 
 {% block contenido %}
     <h1>{% if object %}Editar{% else %}Nueva{% endif %} categoría</h1>
-    <form method="post" novalidate>
+    <form method="post" class="ficha" novalidate>
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Guardar</button>

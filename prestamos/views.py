@@ -9,7 +9,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
+from django.views.generic import (
+    CreateView, DeleteView, DetailView, ListView, UpdateView, View,
+)
 
 from .forms import CategoriaForm, HerramientaForm
 from .mixins import SoloEncargadoMixin
@@ -235,3 +237,81 @@ def confirmar_solicitud(request):
 def mis_prestamos(request):
     prestamos = Prestamo.objects.filter(socio=request.user).select_related('herramienta')
     return render(request, 'prestamos/mis_prestamos.html', {'prestamos': prestamos})
+
+
+@login_required
+def prestamo_detail(request, id):
+    # Al filtrar por socio, el id de un préstamo ajeno responde 404.
+    prestamo = get_object_or_404(
+        Prestamo.objects.select_related('herramienta'), pk=id, socio=request.user,
+    )
+    return render(request, 'prestamos/prestamo_detail.html', {'prestamo': prestamo})
+
+
+def liberar_herramienta(herramienta_id):
+    """Deja la herramienta disponible si no tiene otro préstamo pendiente o activo."""
+    abiertos = Prestamo.objects.filter(
+        herramienta_id=herramienta_id,
+        estado__in=[Prestamo.Estado.PENDIENTE, Prestamo.Estado.ACTIVO],
+    )
+    if not abiertos.exists():
+        Herramienta.objects.filter(pk=herramienta_id).update(disponible=True)
+
+
+@login_required
+@require_POST
+def cancelar_prestamo(request, id):
+    with transaction.atomic():
+        prestamo = get_object_or_404(
+            Prestamo.objects.select_for_update(), pk=id, socio=request.user,
+        )
+        if prestamo.estado != Prestamo.Estado.PENDIENTE:
+            messages.error(request, 'Solo puedes cancelar préstamos pendientes.')
+        else:
+            prestamo.estado = Prestamo.Estado.CANCELADO
+            prestamo.save(update_fields=['estado'])
+            liberar_herramienta(prestamo.herramienta_id)
+            messages.success(request, 'El préstamo se canceló correctamente.')
+    return redirect('prestamos:mis_prestamos')
+
+
+# Gestión de préstamos (encargado)
+
+class PrestamoListView(SoloEncargadoMixin, ListView):
+    model = Prestamo
+
+    def get_queryset(self):
+        return super().get_queryset().select_related('socio', 'herramienta')
+
+
+class ActivarPrestamoView(SoloEncargadoMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request, id):
+        with transaction.atomic():
+            prestamo = get_object_or_404(Prestamo.objects.select_for_update(), pk=id)
+            if prestamo.estado != Prestamo.Estado.PENDIENTE:
+                messages.error(request, 'Solo se pueden activar préstamos pendientes.')
+            else:
+                prestamo.estado = Prestamo.Estado.ACTIVO
+                prestamo.save(update_fields=['estado'])
+                messages.success(request, 'El préstamo se activó correctamente.')
+        return redirect('prestamos:prestamo_list')
+
+
+class DevolverPrestamoView(SoloEncargadoMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request, id):
+        with transaction.atomic():
+            prestamo = get_object_or_404(Prestamo.objects.select_for_update(), pk=id)
+            if prestamo.estado != Prestamo.Estado.ACTIVO:
+                messages.error(
+                    request, 'Solo se puede registrar la devolución de préstamos activos.')
+            else:
+                prestamo.estado = Prestamo.Estado.DEVUELTO
+                prestamo.fecha_devolucion_real = timezone.localdate()
+                prestamo.save(update_fields=['estado', 'fecha_devolucion_real'])
+                liberar_herramienta(prestamo.herramienta_id)
+                messages.success(request, 'La devolución se registró correctamente.')
+        return redirect('prestamos:prestamo_list')

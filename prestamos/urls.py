@@ -16,6 +16,12 @@ urlpatterns = [
     path('solicitud/quitar/<int:id>/', views.quitar_solicitud, name='quitar_solicitud'),
     path('solicitud/confirmar/', views.confirmar_solicitud, name='confirmar_solicitud'),
     path('mis-prestamos/', views.mis_prestamos, name='mis_prestamos'),
+    path('mis-prestamos/<int:id>/', views.prestamo_detail, name='prestamo_detail'),
+    path('mis-prestamos/<int:id>/cancelar/', views.cancelar_prestamo, name='cancelar_prestamo'),
+
+    path('prestamos/', views.PrestamoListView.as_view(), name='prestamo_list'),
+    path('prestamos/<int:id>/activar/', views.ActivarPrestamoView.as_view(), name='activar_prestamo'),
+    path('prestamos/<int:id>/devolver/', views.DevolverPrestamoView.as_view(), name='devolver_prestamo'),
 
     path('herramientas/', views.HerramientaListView.as_view(), name='herramienta_list'),
     path('herramientas/nueva/', views.HerramientaCreateView.as_view(), name='herramienta_create'),

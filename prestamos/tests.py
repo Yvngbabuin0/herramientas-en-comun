@@ -261,3 +261,103 @@ class SolicitudTests(TestCase):
             socio=self.otro, herramienta_id=1, fecha_devolucion_esperada=timezone.localdate())
         respuesta = self.client.get(reverse('prestamos:mis_prestamos'))
         self.assertEqual(list(respuesta.context['prestamos']), [])
+
+
+class GestionPrestamosTests(TestCase):
+    fixtures = ['datos_iniciales']
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.socio = User.objects.create_user('socio_prueba')
+        cls.otro = User.objects.create_user('otro_prueba')
+        cls.encargado = User.objects.create_user('encargado_prueba', is_staff=True)
+
+    def prestamo(self, socio, herramienta_id=1, estado='pendiente'):
+        Herramienta.objects.filter(pk=herramienta_id).update(disponible=False)
+        return Prestamo.objects.create(
+            socio=socio, herramienta_id=herramienta_id, estado=estado,
+            fecha_devolucion_esperada=timezone.localdate())
+
+    def post(self, nombre, prestamo):
+        return self.client.post(reverse(f'prestamos:{nombre}', args=[prestamo.pk]), follow=True)
+
+    def disponible(self, pk=1):
+        return Herramienta.objects.get(pk=pk).disponible
+
+    def test_socio_ve_solo_los_suyos(self):
+        propio = self.prestamo(self.socio, 1)
+        ajeno = self.prestamo(self.otro, 2)
+        self.client.force_login(self.socio)
+        respuesta = self.client.get(reverse('prestamos:mis_prestamos'))
+        self.assertEqual(list(respuesta.context['prestamos']), [propio])
+        ver = lambda p: self.client.get(reverse('prestamos:prestamo_detail', args=[p.pk]))
+        self.assertEqual(ver(propio).status_code, 200)
+        self.assertEqual(ver(ajeno).status_code, 404)
+
+    def test_no_cancela_prestamo_ajeno(self):
+        ajeno = self.prestamo(self.otro)
+        self.client.force_login(self.socio)
+        self.assertEqual(self.post('cancelar_prestamo', ajeno).status_code, 404)
+        ajeno.refresh_from_db()
+        self.assertEqual(ajeno.estado, 'pendiente')
+        self.assertFalse(self.disponible())
+
+    def test_cancelar_pendiente(self):
+        propio = self.prestamo(self.socio)
+        self.client.force_login(self.socio)
+        url = reverse('prestamos:cancelar_prestamo', args=[propio.pk])
+        self.assertEqual(self.client.get(url).status_code, 405)
+        self.assertContains(self.post('cancelar_prestamo', propio), 'se canceló correctamente')
+        propio.refresh_from_db()
+        self.assertEqual(propio.estado, 'cancelado')
+        self.assertTrue(self.disponible())
+
+    def test_no_cancela_si_no_esta_pendiente(self):
+        self.client.force_login(self.socio)
+        for pk, estado in enumerate(('activo', 'devuelto', 'cancelado'), 1):
+            prestamo = self.prestamo(self.socio, pk, estado)
+            self.assertContains(
+                self.post('cancelar_prestamo', prestamo), 'Solo puedes cancelar')
+            prestamo.refresh_from_db()
+            self.assertEqual(prestamo.estado, estado)
+            self.assertFalse(self.disponible(pk))
+
+    def test_gestion_solo_encargado(self):
+        prestamo = self.prestamo(self.socio)
+        self.client.force_login(self.socio)
+        self.assertEqual(self.client.get(reverse('prestamos:prestamo_list')).status_code, 403)
+        for nombre in ('activar_prestamo', 'devolver_prestamo'):
+            self.assertEqual(self.post(nombre, prestamo).status_code, 403)
+        prestamo.refresh_from_db()
+        self.assertEqual(prestamo.estado, 'pendiente')
+
+    def test_encargado_ve_todos_activa_y_recibe(self):
+        prestamo = self.prestamo(self.socio, 1)
+        self.prestamo(self.otro, 2)
+        self.client.force_login(self.encargado)
+        respuesta = self.client.get(reverse('prestamos:prestamo_list'))
+        self.assertEqual(len(respuesta.context['prestamo_list']), 2)
+        url = reverse('prestamos:activar_prestamo', args=[prestamo.pk])
+        self.assertEqual(self.client.get(url).status_code, 405)
+
+        # No se puede devolver sin activar antes.
+        self.assertContains(
+            self.post('devolver_prestamo', prestamo), 'de préstamos activos')
+        self.assertContains(self.post('activar_prestamo', prestamo), 'se activó')
+        self.assertFalse(self.disponible())
+        self.assertContains(
+            self.post('activar_prestamo', prestamo), 'activar préstamos pendientes')
+
+        self.assertContains(self.post('devolver_prestamo', prestamo), 'se registró')
+        prestamo.refresh_from_db()
+        self.assertEqual(prestamo.estado, 'devuelto')
+        self.assertEqual(prestamo.fecha_devolucion_real, timezone.localdate())
+        self.assertTrue(self.disponible())
+        self.assertFalse(self.disponible(2))
+
+    def test_no_libera_si_hay_otro_prestamo_abierto(self):
+        propio = self.prestamo(self.socio)
+        self.prestamo(self.otro)
+        self.client.force_login(self.socio)
+        self.post('cancelar_prestamo', propio)
+        self.assertFalse(self.disponible())
